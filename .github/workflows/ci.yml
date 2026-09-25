@@ -22,6 +22,16 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # Runs before npm ci, because a lockfile pointing at somebody's corporate
+      # registry mirror is a problem whether or not the install happens to work.
+      - name: Check the lockfile only references the public registry
+        run: |
+          if grep -oE '"resolved": "https://[^/]+' package-lock.json \
+            | sort -u | grep -v 'registry.npmjs.org'; then
+            echo "::error file=package-lock.json::The lockfile references a registry other than registry.npmjs.org, which usually means npm install ran behind a corporate mirror. Do not hand-edit it: run the 'Refresh lockfile' workflow."
+            exit 1
+          fi
+
       - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
