@@ -21,7 +21,16 @@ $lf = ($Script -replace "`r`n", "`n")
 # "#!/usr/bin/env bash" off line 1, at which point the agent runs the script
 # with dash instead and constructs like "set -o pipefail" fail.
 if ($Env.Count -gt 0) {
-  $exports = ($Env.GetEnumerator() | ForEach-Object { "export {0}='{1}'" -f $_.Key, $_.Value }) -join "`n"
+  # Values are single-quoted for bash, so the only character that needs
+  # escaping is the single quote itself: close, emit \', reopen. Keys become
+  # bare identifiers, so anything that is not a valid name is rejected.
+  $exports = ($Env.GetEnumerator() | ForEach-Object {
+      if ($_.Key -notmatch '^[A-Za-z_][A-Za-z0-9_]*$') {
+        throw "Invalid environment variable name: '$($_.Key)'"
+      }
+      $quoted = ([string]$_.Value) -replace "'", "'\''"
+      "export {0}='{1}'" -f $_.Key, $quoted
+    }) -join "`n"
   $lines = $lf -split "`n", 2
   if ($lines[0] -like '#!*') {
     $lf = $lines[0] + "`n" + $exports + "`n" + $lines[1]
