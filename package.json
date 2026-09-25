@@ -5,6 +5,9 @@
   "description": "Mockup planner for estimating DICOM archive savings from lossless recompression.",
   "license": "MIT",
   "type": "module",
+  "engines": {
+    "node": ">=22.12.0"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",

@@ -13,7 +13,7 @@ calculator, not a medical device and not a PACS component.
 
 | Concern    | Choice                                        |
 | ---------- | --------------------------------------------- |
-| Runtime    | Node 24 for local development, Node 20/22/24 in CI |
+| Runtime    | Node 24 for local development, Node 22/24 in CI; minimum 22.12 |
 | Framework  | React 19 with function components and hooks   |
 | Language   | TypeScript, strict, no `any`                  |
 | Build      | Vite 8                                        |

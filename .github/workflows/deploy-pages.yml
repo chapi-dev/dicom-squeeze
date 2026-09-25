@@ -19,10 +19,16 @@ jobs:
     name: Build site
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # configure-pages runs with enablement: true, which turns Pages on through the
+    # API when the repository has never had it enabled. That needs write access.
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -37,9 +43,13 @@ jobs:
       - name: Add SPA fallback
         run: cp dist/index.html dist/404.html
 
-      - uses: actions/configure-pages@v5
+      # enablement: true makes a fresh fork work without anyone clicking through
+      # Settings first. It is a no-op once Pages is already on.
+      - uses: actions/configure-pages@v6
+        with:
+          enablement: true
 
-      - uses: actions/upload-pages-artifact@v4
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: dist
 
@@ -56,4 +66,4 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
