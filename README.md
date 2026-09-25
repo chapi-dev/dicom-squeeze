@@ -3,6 +3,7 @@
 [![CI](https://github.com/chapi-dev/dicom-squeeze/actions/workflows/ci.yml/badge.svg)](https://github.com/chapi-dev/dicom-squeeze/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/chapi-dev/dicom-squeeze/actions/workflows/codeql.yml/badge.svg)](https://github.com/chapi-dev/dicom-squeeze/actions/workflows/codeql.yml)
 [![Pages](https://github.com/chapi-dev/dicom-squeeze/actions/workflows/deploy-pages.yml/badge.svg)](https://github.com/chapi-dev/dicom-squeeze/actions/workflows/deploy-pages.yml)
+[![App Service](https://github.com/chapi-dev/dicom-squeeze/actions/workflows/deploy-appservice.yml/badge.svg)](https://github.com/chapi-dev/dicom-squeeze/actions/workflows/deploy-appservice.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 **A mockup planner for squeezing a radiology imaging archive.**
@@ -11,6 +12,12 @@ Pick a target DICOM transfer syntax, describe the estate, and see what a lossles
 recompression campaign would do to the footprint, the storage bill and the payback period.
 
 **[Try it →](https://chapi-dev.github.io/dicom-squeeze/)**
+&nbsp;·&nbsp;
+[Azure mirror](https://dicom-squeeze.azurewebsites.net)
+
+Every push to `main` deploys to both: GitHub Pages built for the `/dicom-squeeze/` sub-path,
+and an Azure App Service built for the domain root. See
+[docs/copilot-setup/06-github-automation.md](docs/copilot-setup/06-github-automation.md#azure-app-service).
 
 > [!WARNING]
 > This is a mockup. It is not a medical device, it processes no real imaging data, and its
