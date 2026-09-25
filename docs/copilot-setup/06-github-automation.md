@@ -9,6 +9,7 @@ Copilot rather than doing it locally.
 | --------------------------- | ------------------------------ | ----------------------------------------------------------- |
 | `ci.yml`                    | push to `main`, pull request   | Lockfile registry check, format, oxlint, typecheck, tests on Node 22/24/26, build |
 | `codeql.yml`                | push, pull request, weekly     | CodeQL for TypeScript and for Actions workflows             |
+| `deploy-appservice.yml`     | push to `main`, manual         | Builds for the domain root and deploys to Azure App Service |
 | `deploy-pages.yml`          | push to `main`                 | Builds with the correct base path and deploys to Pages      |
 | `dependency-review.yml`     | pull request                   | Blocks high-severity or disallowed-licence dependencies     |
 | `dependabot-auto-merge.yml` | Dependabot pull request        | Auto-merges patch and minor updates once CI is green        |
@@ -27,13 +28,69 @@ drifting out of date.
 ### Security posture
 
 Every workflow declares `permissions: contents: read` at the top level, and each job widens
-that only to what it needs. The Pages deploy job is the only one with `pages: write` and
-`id-token: write`.
+that only to what it needs. Only the two deploy jobs have `id-token: write`, and only the
+Pages one has `pages: write`.
 
 `pr-triage.yml` uses `pull_request_target`, which runs with write access against the base
 branch. It never checks out or executes code from the pull request head — it only reads
 metadata and applies labels. That distinction is the whole of the vulnerability class; keep
 it in mind before adding a step there.
+
+## Azure App Service
+
+GitHub Pages serves the app from `/dicom-squeeze/`. The App Service deployment exists to
+show the same build running at a domain root, which is the shape most real deployments take
+and the one that exposes base-path bugs.
+
+Two things make that work:
+
+- `vite.config.ts` reads `BASE_PATH`. Pages passes `/dicom-squeeze/`, App Service passes `/`.
+  Getting this wrong still serves the HTML with a 200 and fails only when the browser fetches
+  the assets, so `deploy-appservice.yml` extracts the asset URLs out of the served page and
+  requests each one.
+- `deploy/server.mjs` is a static file server written against Node built-ins only. App Service
+  on Linux will not serve a folder by itself; something has to listen on `$PORT`. Zero
+  dependencies means the deployment package is the build output plus one file, with no install
+  step on the server and no dependency surface to keep patched.
+
+### Authentication
+
+There is no publish profile and no client secret in this repository. An Entra app registration
+holds a federated credential naming this repository and the `production` environment, and that
+registration has `Website Contributor` on exactly one web app. Basic publishing credentials are
+disabled on the app, so a publish profile would not work even if one leaked.
+
+The workflow reads five repository **variables**, not secrets — they are resource identifiers,
+and treating them as secrets would only make the logs harder to read:
+
+| Variable | Meaning |
+| --- | --- |
+| `AZURE_CLIENT_ID` | App registration that the federated credential is attached to |
+| `AZURE_TENANT_ID` | Entra tenant |
+| `AZURE_SUBSCRIPTION_ID` | Target subscription |
+| `AZURE_RESOURCE_GROUP` | Resource group holding the web app |
+| `AZURE_WEBAPP_NAME` | Web app name |
+
+### Reproducing it
+
+```bash
+az webapp create -g <rg> -p <plan> -n <app> --runtime "NODE:24-lts"
+az webapp config set -g <rg> -n <app> --startup-file "node server.mjs" --always-on true
+
+az ad app create --display-name gh-<app>-deploy
+az ad app federated-credential create --id <appId> --parameters '{
+  "name": "gh-env",
+  "issuer": "https://token.actions.githubusercontent.com",
+  "subject": "repo:<owner>/<repo>:environment:production",
+  "audiences": ["api://AzureADTokenExchange"]
+}'
+az role assignment create --assignee <appId> --role "Website Contributor" \
+  --scope /subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.Web/sites/<app>
+```
+
+The subject string has to match how the job runs. A job with `environment: production` gets
+`repo:<owner>/<repo>:environment:production`; one without gets
+`repo:<owner>/<repo>:ref:refs/heads/main`. A mismatch fails at login with `AADSTS70021`.
 
 ## Copilot code review
 

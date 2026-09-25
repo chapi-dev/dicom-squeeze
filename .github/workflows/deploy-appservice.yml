@@ -1,0 +1,111 @@
+name: Deploy to Azure App Service
+
+# Publishes the same build that goes to GitHub Pages, but rooted at / instead of
+# /dicom-squeeze/, to an Azure App Service Linux app.
+#
+# Authentication is OIDC. There is no publish profile and no client secret in
+# this repository: a federated credential ties a specific Entra app registration
+# to this repository and branch, and that registration holds Website Contributor
+# on exactly one web app. Basic publishing credentials are disabled on the app,
+# so a leaked profile would not be usable even if one existed.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: appservice
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Build and deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: production
+      url: https://dicom-squeeze.azurewebsites.net
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build for the site root
+        env:
+          BASE_PATH: /
+        run: npm run build
+
+      - name: Assemble the deployment package
+        run: |
+          cp deploy/server.mjs dist/
+          cd dist
+          zip -r ../app.zip .
+          echo "Package contents:"
+          unzip -l ../app.zip
+
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy
+        run: |
+          az webapp deploy \
+            --resource-group '${{ vars.AZURE_RESOURCE_GROUP }}' \
+            --name '${{ vars.AZURE_WEBAPP_NAME }}' \
+            --src-path app.zip \
+            --type zip \
+            --async false
+
+      - name: Wait for the app to answer
+        run: |
+          url="https://dicom-squeeze.azurewebsites.net"
+          for attempt in $(seq 1 30); do
+            code=$(curl -fsS -o /dev/null -w '%{http_code}' "$url/healthz" || true)
+            if [ "$code" = "200" ]; then
+              echo "Healthy after ${attempt} attempt(s)."
+              break
+            fi
+            echo "Attempt ${attempt}: /healthz returned '${code}', retrying."
+            sleep 10
+          done
+          if [ "$code" != "200" ]; then
+            echo "::error::The app never became healthy."
+            exit 1
+          fi
+
+      - name: Verify the deployed page and its assets
+        run: |
+          url="https://dicom-squeeze.azurewebsites.net"
+          html=$(curl -fsS "$url/")
+          echo "$html" | grep -q 'DICOM Squeeze' || {
+            echo "::error::The served page does not contain the expected title."
+            exit 1
+          }
+
+          # A build made for the wrong base path still returns 200 for the HTML
+          # and fails only when the browser fetches the assets, so check those
+          # explicitly rather than trusting the page load.
+          assets=$(echo "$html" | grep -oE '(src|href)="[^"]*assets/[^"]+"' | cut -d'"' -f2)
+          [ -n "$assets" ] || { echo "::error::No asset references found in the page."; exit 1; }
+
+          for asset in $assets; do
+            code=$(curl -fsS -o /dev/null -w '%{http_code}' "${url}${asset}" || true)
+            echo "  ${asset} -> ${code}"
+            [ "$code" = "200" ] || { echo "::error::Asset ${asset} returned ${code}."; exit 1; }
+          done
+
+          echo "Deployment verified."
