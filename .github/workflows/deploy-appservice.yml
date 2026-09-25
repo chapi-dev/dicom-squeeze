@@ -25,7 +25,9 @@ jobs:
   deploy:
     name: Build and deploy
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # Kudu's cold warm-up on a Basic plan took nearly four minutes on the first
+    # deploy, before the package even started uploading.
+    timeout-minutes: 30
     environment:
       name: production
       url: https://dicom-squeeze.azurewebsites.net
@@ -66,47 +68,80 @@ jobs:
 
       - name: Deploy
         run: |
+          # --track-status defaults to true, which polls Kudu for the site's
+          # runtime state after the package lands. That poll can sit on
+          # "Starting the site..." indefinitely while the app is already
+          # serving traffic, so it is disabled here: the steps below prove the
+          # deployment against the running site, which is the better signal
+          # anyway. Deployment itself stays synchronous, so a rejected package
+          # still fails this step. --timeout is in milliseconds.
           az webapp deploy \
             --resource-group '${{ vars.AZURE_RESOURCE_GROUP }}' \
             --name '${{ vars.AZURE_WEBAPP_NAME }}' \
             --src-path app.zip \
             --type zip \
-            --async false
+            --track-status false \
+            --timeout 600000
 
       - name: Wait for the app to answer
         run: |
-          url="https://dicom-squeeze.azurewebsites.net"
-          for attempt in $(seq 1 30); do
-            code=$(curl -fsS -o /dev/null -w '%{http_code}' "$url/healthz" || true)
+          url="https://${{ vars.AZURE_WEBAPP_NAME }}.azurewebsites.net"
+          for attempt in $(seq 1 40); do
+            code=$(curl -fsS --max-time 20 -o /dev/null -w '%{http_code}' "$url/healthz" || true)
             if [ "$code" = "200" ]; then
               echo "Healthy after ${attempt} attempt(s)."
               break
             fi
             echo "Attempt ${attempt}: /healthz returned '${code}', retrying."
-            sleep 10
+            sleep 15
           done
           if [ "$code" != "200" ]; then
             echo "::error::The app never became healthy."
             exit 1
           fi
 
-      - name: Verify the deployed page and its assets
+      - name: Verify the site serves this build
         run: |
-          url="https://dicom-squeeze.azurewebsites.net"
-          html=$(curl -fsS "$url/")
-          echo "$html" | grep -q 'DICOM Squeeze' || {
+          url="https://${{ vars.AZURE_WEBAPP_NAME }}.azurewebsites.net"
+
+          # Vite fingerprints asset filenames by content. Requiring the served
+          # page to reference the names produced by this run is what separates a
+          # real deployment from a stale one that is still happily answering 200.
+          expected=$(grep -oE '(src|href)="/assets/[^"]+"' dist/index.html | cut -d'"' -f2 | sort -u)
+          if [ -z "$expected" ]; then
+            echo "::error::The build output references no assets under /assets/."
+            echo "::error::That usually means BASE_PATH was not applied."
+            exit 1
+          fi
+          echo "Expected assets:"; echo "$expected" | sed 's/^/  /'
+
+          matched=0
+          for attempt in $(seq 1 40); do
+            page=$(curl -fsS --max-time 20 "$url/" || true)
+            served=$(printf '%s' "$page" | grep -oE '(src|href)="/assets/[^"]+"' | cut -d'"' -f2 | sort -u || true)
+            if [ "$served" = "$expected" ]; then
+              echo "Serving this build after ${attempt} attempt(s)."
+              matched=1
+              break
+            fi
+            echo "Attempt ${attempt}: served [${served//$'\n'/ }], retrying."
+            sleep 15
+          done
+          if [ "$matched" != "1" ]; then
+            echo "::error::The site never served the build produced by this run."
+            exit 1
+          fi
+
+          printf '%s' "$page" | grep -q 'DICOM Squeeze' || {
             echo "::error::The served page does not contain the expected title."
             exit 1
           }
 
           # A build made for the wrong base path still returns 200 for the HTML
-          # and fails only when the browser fetches the assets, so check those
-          # explicitly rather than trusting the page load.
-          assets=$(echo "$html" | grep -oE '(src|href)="[^"]*assets/[^"]+"' | cut -d'"' -f2)
-          [ -n "$assets" ] || { echo "::error::No asset references found in the page."; exit 1; }
-
-          for asset in $assets; do
-            code=$(curl -fsS -o /dev/null -w '%{http_code}' "${url}${asset}" || true)
+          # and fails only when the browser fetches the assets, so request each
+          # one rather than treating a successful page load as proof.
+          for asset in $expected; do
+            code=$(curl -fsS --max-time 20 -o /dev/null -w '%{http_code}' "${url}${asset}" || true)
             echo "  ${asset} -> ${code}"
             [ "$code" = "200" ] || { echo "::error::Asset ${asset} returned ${code}."; exit 1; }
           done
