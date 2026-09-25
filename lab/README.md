@@ -73,10 +73,16 @@ full of it.
 
 | | |
 |---|---|
-| Pixel payload, 133 slices | **66.5 MiB** |
-| Same data, JPEG-LS lossless (~2.6:1) | 25.6 MiB |
-| Same data, JPEG 2000 lossless (~2.8:1) | 23.8 MiB |
-| Same data, HTJ2K lossless (~2.9:1) | 22.9 MiB |
+| Pixel payload, 133 slices (measured) | **66.5 MiB** |
+| Same data at an assumed 2.6:1 (JPEG-LS lossless) | 25.6 MiB |
+| Same data at an assumed 2.8:1 (JPEG 2000 lossless) | 23.8 MiB |
+| Same data at an assumed 2.9:1 (HTJ2K lossless) | 22.9 MiB |
+
+> **Only the first row is a measurement.** The 2.6, 2.8 and 2.9 ratios are
+> unsourced placeholders: no codec was run on this study and no published study
+> or vendor datasheet backs these exact figures. They sit inside the planning
+> ranges in [`src/lib/codecs.ts`](../src/lib/codecs.ts) and are here to show the
+> arithmetic, not to report a result. Do not quote them as findings.
 
 That gap, multiplied across an archive, is the entire business case for the tool
 this repository mocks up.
@@ -261,7 +267,24 @@ you want your archive stored compressed, **you compress it before it arrives.**
 
 ## What it costs
 
-Verified against the Azure Retail Prices API, West Europe, EUR, September 2026.
+Source: the [Azure Retail Prices API](https://learn.microsoft.com/en-us/rest/api/cost-management/retail-prices/azure-retail-prices),
+West Europe, EUR, pay-as-you-go retail prices, retrieved September 2026. The
+figures can be reproduced with these queries:
+
+```bash
+API='https://prices.azure.com/api/retail/prices?currencyCode=EUR'
+# VM
+curl -sG "$API" --data-urlencode "\$filter=armRegionName eq 'westeurope' and armSkuName eq 'Standard_D2as_v6' and priceType eq 'Consumption'"
+# Standard SSD managed disks, E10 (data) and E4 (OS)
+curl -sG "$API" --data-urlencode "\$filter=armRegionName eq 'westeurope' and (skuName eq 'E10 LRS' or skuName eq 'E4 LRS')"
+# Standard static public IP
+curl -sG "$API" --data-urlencode "\$filter=armRegionName eq 'westeurope' and contains(meterName, 'Static Public IP')"
+# DICOM service storage
+curl -sG "$API" --data-urlencode "\$filter=armRegionName eq 'westeurope' and contains(productName, 'DICOM')"
+```
+
+Retail prices change. If a rerun disagrees with the tables below, the API is
+right and this page is out of date.
 
 ### The lab
 
@@ -299,10 +322,11 @@ in a radiology archive older than a few months.
 
 Two conclusions follow, and they point the same way:
 
-1. **Compression is not an optimisation, it is the architecture.** At 2.6:1
-   lossless, 3 PB becomes 1.15 PB and €754,975 becomes **€290,375** — a saving
-   of €464,600 a year, larger than most teams' entire infrastructure budget.
-   At HTJ2K's 2.9:1 the bill falls to €260,336.
+1. **Compression is not an optimisation, it is the architecture.** At an
+   assumed 2.6:1 lossless (a placeholder, see [the data](#the-data)), 3 PB
+   becomes 1.15 PB and €754,975 becomes **€290,375** — a saving of €464,600 a
+   year, larger than most teams' entire infrastructure budget.
+   At an assumed 2.9:1 for HTJ2K the bill falls to €260,336.
 2. **A managed DICOM service is a metadata and access layer, not a bulk
    archive.** The economics point towards keeping the index in the DICOM
    service and the cold bytes in tiered blob storage.
@@ -318,11 +342,18 @@ cd lab\provision
 $env:ORTHANC_PASSWORD = '<a strong password>'
 .\Copy-LabToVm.ps1
 
+# 01-provision.ps1 exports LAB_FQDN and AZ_DICOM_URL into this session.
+# In a new session, set them again from its output first.
+$run = { param($f) .\Invoke-VmScript.ps1 -Script "#!/usr/bin/env bash`ncd /opt/dicom-lab && ./$f" -Env @{
+    ORTHANC_PASSWORD = $env:ORTHANC_PASSWORD
+    LAB_FQDN         = $env:LAB_FQDN
+    AZ_DICOM_URL     = $env:AZ_DICOM_URL
+  } }
+
 # then, in order
-$run = { param($f) .\Invoke-VmScript.ps1 -Script "#!/usr/bin/env bash`ncd /opt/dicom-lab && ./$f" -Env @{ ORTHANC_PASSWORD = $env:ORTHANC_PASSWORD } }
 & $run '20-setup-disk.sh'
 & $run '30-install-orthanc.sh'
-& $run '35-tls.sh'            # needs LAB_FQDN
+& $run '35-tls.sh'
 & $run '40-fetch-dicom.sh'
 & $run '50-cstore.sh'
 & $run '60-dimse-query-retrieve.sh'
@@ -344,7 +375,7 @@ When you are done:
 | Script | What it demonstrates |
 |---|---|
 | `00-env.sh` | Shared settings; sourced by the rest |
-| `20-setup-disk.sh` | Partition, format and mount the managed disk |
+| `20-setup-disk.sh` | Format the whole managed disk (no partition table) and mount it |
 | `30-install-orthanc.sh` | Docker + Orthanc, storage on the data disk |
 | `35-tls.sh` | Caddy and a real Let's Encrypt certificate |
 | `40-fetch-dicom.sh` | Download from TCIA; dissect a real file |

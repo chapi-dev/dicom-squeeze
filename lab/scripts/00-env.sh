@@ -21,11 +21,20 @@ export STUDY_UID="${STUDY_UID:-1.3.6.1.4.1.14519.5.2.1.6279.6001.298806137288633
 export PATIENT_ID="${PATIENT_ID:-LIDC-IDRI-0001}"
 
 # --- Azure Health Data Services DICOM service ---------------------------------
-export AZ_DICOM_URL="${AZ_DICOM_URL:-https://wsdicomlabwe-dicomsvc.dicom.azurehealthcareapis.com/v1}"
+# AZ_DICOM_URL has no default on purpose: it depends on the workspace and service
+# names chosen at provisioning time, and 01-provision.ps1 exports it. A guessed
+# default would send scripts 80 and 90 to someone else's service without error.
 
 require_password() {
   if [ -z "${ORTHANC_PASSWORD:-}" ]; then
     echo "ORTHANC_PASSWORD is not set. Export it before running this script." >&2
+    exit 1
+  fi
+}
+
+require_az_dicom_url() {
+  if [ -z "${AZ_DICOM_URL:-}" ]; then
+    echo "AZ_DICOM_URL is not set. Export the service URL printed by 01-provision.ps1 (its serviceUrl followed by /v1)." >&2
     exit 1
   fi
 }

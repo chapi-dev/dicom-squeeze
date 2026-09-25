@@ -49,6 +49,11 @@ echo
 echo "=== orthanc configuration ==="
 mkdir -p /etc/orthanc "$DATA/orthanc-db" "$DATA/orthanc-index"
 
+# The password is encoded as a JSON string literal rather than pasted in raw, so
+# a password containing a quote, a backslash or a newline still yields valid
+# JSON instead of an Orthanc that refuses to start.
+ORTHANC_PASSWORD_JSON=$(ORTHANC_PASSWORD="$ORTHANC_PASSWORD" python3 -c 'import json,os;print(json.dumps(os.environ["ORTHANC_PASSWORD"]))')
+
 # Written with a heredoc rather than env vars so the whole configuration is
 # visible in one place and can be read as documentation.
 cat > /etc/orthanc/orthanc.json <<JSON
@@ -64,7 +69,7 @@ cat > /etc/orthanc/orthanc.json <<JSON
   "HttpPort": 8042,
   "RemoteAccessAllowed": true,
   "AuthenticationEnabled": true,
-  "RegisteredUsers": { "admin": "${ORTHANC_PASSWORD}" },
+  "RegisteredUsers": { "admin": ${ORTHANC_PASSWORD_JSON} },
 
   // DIMSE. "AET" is the Application Entity Title: the name one DICOM node
   // answers to on the network. A modality or a Philips PACS is configured with

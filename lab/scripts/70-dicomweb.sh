@@ -101,6 +101,9 @@ python3 - <<'PY'
 rows, cols, bits, n = 512, 512, 16, 133
 raw = rows*cols*(bits//8)*n
 print(f"  pure pixel payload                 : {raw/1024/1024:.1f} MiB  ({rows}x{cols}x{bits//8} x {n})")
+# Only `raw` above is measured. These ratios are unsourced placeholders -- no
+# codec is run here and no published study backs these exact values -- so the
+# sizes below are arithmetic, not results. See lab/README.md, "The data".
 for name, ratio in [("JPEG-LS lossless", 2.6), ("JPEG 2000 lossless", 2.8), ("HTJ2K lossless", 2.9)]:
-    print(f"  {name:35}: {raw/ratio/1024/1024:.1f} MiB  (~{ratio}:1)")
+    print(f"  {name:35}: {raw/ratio/1024/1024:.1f} MiB  (assumed {ratio}:1, placeholder)")
 PY

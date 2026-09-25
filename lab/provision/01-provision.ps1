@@ -109,10 +109,14 @@ az role assignment create --assignee-object-id $me --assignee-principal-type Use
 Step 'done'
 $fqdn = az network public-ip show -g $ResourceGroup -n "${VmName}PublicIP" --query dnsSettings.fqdn -o tsv
 $svc  = az healthcareapis workspace dicom-service show -g $ResourceGroup --workspace-name $WorkspaceName -n $DicomService --query serviceUrl -o tsv
+# The lab scripts read these two. Exporting them here means the names chosen by
+# the parameters above are the ones the scripts use, with nothing to copy by hand.
+$env:LAB_FQDN     = $fqdn
+$env:AZ_DICOM_URL = "$svc/v1"
 Write-Host @"
 
-  VM FQDN        : $fqdn
-  DICOM service  : $svc
+  VM FQDN        : $fqdn   (exported as `$env:LAB_FQDN)
+  DICOM service  : $svc/v1   (exported as `$env:AZ_DICOM_URL)
 
   Next:
     `$env:ORTHANC_PASSWORD = '<pick a strong one>'

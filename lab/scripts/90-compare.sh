@@ -5,6 +5,7 @@
 set -uo pipefail
 . "$(dirname "$0")/00-env.sh"
 require_password
+require_az_dicom_url
 
 AZ="$AZ_DICOM_URL"
 OR="${ORTHANC_HTTP}/dicom-web"

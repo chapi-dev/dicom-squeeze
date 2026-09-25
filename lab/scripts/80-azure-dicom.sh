@@ -8,6 +8,7 @@
 # resource decides what it may do.
 set -uo pipefail
 . "$(dirname "$0")/00-env.sh"
+require_az_dicom_url
 
 SVC="$AZ_DICOM_URL"
 SERIES="$DATA_DIR/incoming/series"
