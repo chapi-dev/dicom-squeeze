@@ -12,7 +12,7 @@ npm ci
 npm run dev
 ```
 
-Node 24 is the development target; `.nvmrc` pins it. CI also runs Node 20 and 22, so avoid
+Node 24 is the development target; `.nvmrc` pins it. CI also runs Node 22, so avoid
 anything that only works on the newest runtime.
 
 ## The four gates

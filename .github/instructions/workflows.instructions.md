@@ -13,8 +13,12 @@ description: Rules for GitHub Actions workflows and repository automation.
 - **`pull_request_target` runs with write access against the base branch.** Never check out
   and execute code from the pull request head in such a workflow. The triage workflow here
   only reads metadata and applies labels, which is safe; keep it that way.
-- Reference third-party actions by a major version tag at minimum. If the repository later
-  moves to commit-SHA pinning, do it consistently across all workflows in one change.
+- **Pin third-party actions to a full commit SHA**, with the human-readable version in a
+  trailing comment: `uses: org/action@<40-char-sha> # v3.1.0`. A tag is mutable, so anyone
+  who controls the upstream repository can change what your workflow executes. CodeQL's
+  `actions/unpinned-tag` query fails the build if you use a bare tag, and Dependabot still
+  updates SHA pins as long as the version comment is present. Actions under the `actions/`
+  and `github/` organisations are exempt — GitHub serves those immutably.
 - Never write a secret into a step that echoes its input. Pass secrets through `env`.
 
 ## Reliability

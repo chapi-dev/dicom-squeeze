@@ -46,7 +46,7 @@ npm ci
 npm run dev
 ```
 
-Node 24 is the development target. CI also tests Node 20 and 22.
+Node 24 is the development target. CI also tests Node 22. The minimum supported version is 22.12.
 
 ## Commands
 
