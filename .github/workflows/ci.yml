@@ -45,10 +45,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Node 20 reached end of life in April 2026. jsdom 30 also fails on it
-        # (undici's webidl.util.markAsUncloneable is missing), so the matrix
-        # covers the current LTS and the current release only.
-        node: [22, 24]
+        # Node 20 reached end of life on 2026-04-30, and jsdom 30 fails on it
+        # (undici's webidl.util.markAsUncloneable is missing). What remains is
+        # every supported line: 22 maintenance LTS, 24 active LTS, 26 current.
+        node: [22, 24, 26]
     steps:
       - uses: actions/checkout@v7
 
