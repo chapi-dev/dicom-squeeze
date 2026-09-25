@@ -1,0 +1,59 @@
+estimation-engine:
+  - changed-files:
+      - any-glob-to-any-file:
+          - src/lib/**
+
+ui:
+  - changed-files:
+      - any-glob-to-any-file:
+          - src/components/**
+          - src/App.tsx
+          - src/main.tsx
+          - src/index.css
+          - index.html
+
+tests:
+  - changed-files:
+      - any-glob-to-any-file:
+          - src/**/__tests__/**
+          - src/test/**
+          - '**/*.test.ts'
+          - '**/*.test.tsx'
+
+ci:
+  - changed-files:
+      - any-glob-to-any-file:
+          - .github/workflows/**
+          - .github/dependabot.yml
+          - .github/labeler.yml
+
+documentation:
+  - changed-files:
+      - any-glob-to-any-file:
+          - '**/*.md'
+          - docs/**
+
+copilot:
+  - changed-files:
+      - any-glob-to-any-file:
+          - .github/copilot-instructions.md
+          - .github/instructions/**
+          - .github/prompts/**
+          - .github/agents/**
+          - .vscode/mcp.json
+          - .copilot/**
+
+dependencies:
+  - changed-files:
+      - any-glob-to-any-file:
+          - package.json
+          - package-lock.json
+
+build:
+  - changed-files:
+      - any-glob-to-any-file:
+          - vite.config.ts
+          - tsconfig*.json
+          - .oxlintrc.json
+          - .prettierrc.json
+          - .nvmrc

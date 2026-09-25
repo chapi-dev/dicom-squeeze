@@ -1,0 +1,71 @@
+name: Bug report
+description: Something in the planner behaves incorrectly.
+title: 'bug: '
+labels: ['bug', 'triage']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. DICOM Squeeze is a mockup, so please do not attach
+        real patient data, real DICOM files or anything that identifies a person.
+
+  - type: checkboxes
+    id: no-phi
+    attributes:
+      label: Confirmation
+      options:
+        - label: This report contains no patient data or other personal information.
+          required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Describe the incorrect behaviour.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect instead?
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Include the slider values and the codec you had selected.
+      placeholder: |
+        1. Set the archive to 3 PB
+        2. Select JPEG-LS Lossless
+        3. Move the Hot tier to 100 %
+        4. Observe ...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which area is affected?
+      options:
+        - Estimation engine (src/lib)
+        - User interface (src/components)
+        - Build, CI or deployment
+        - Documentation
+        - Not sure
+    validations:
+      required: true
+
+  - type: input
+    id: environment
+    attributes:
+      label: Browser and operating system
+      placeholder: Firefox 140 on Windows 11
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else?
+      description: Console output, screenshots, or links.

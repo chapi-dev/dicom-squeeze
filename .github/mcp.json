@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "microsoft-learn": {
+      "type": "http",
+      "url": "https://learn.microsoft.com/api/mcp",
+      "tools": ["*"]
+    },
+    "playwright": {
+      "type": "local",
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp@latest", "--headless"],
+      "tools": ["*"]
+    }
+  }
+}

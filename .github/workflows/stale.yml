@@ -1,0 +1,39 @@
+name: Stale issues and pull requests
+
+on:
+  schedule:
+    - cron: '32 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      issues: write
+      pull-requests: write
+    steps:
+      - uses: actions/stale@v10
+        with:
+          days-before-stale: 45
+          days-before-close: 14
+          stale-issue-label: stale
+          stale-pr-label: stale
+          exempt-issue-labels: 'pinned,security,roadmap'
+          exempt-pr-labels: 'pinned,security,dependencies'
+          exempt-all-milestones: true
+          stale-issue-message: >
+            This issue has had no activity for 45 days, so it has been marked stale.
+            Comment to keep it open; otherwise it will be closed in 14 days.
+          stale-pr-message: >
+            This pull request has had no activity for 45 days, so it has been marked stale.
+            Push a commit or comment to keep it open; otherwise it will be closed in 14 days.
+          close-issue-message: >
+            Closing because this issue has been stale for 14 days. Reopen it if it is still
+            relevant.
+          close-pr-message: >
+            Closing because this pull request has been stale for 14 days. Reopen it if you
+            intend to continue the work.

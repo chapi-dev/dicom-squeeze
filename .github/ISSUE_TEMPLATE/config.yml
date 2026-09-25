@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Copilot CLI setup guide
+    url: https://github.com/chapi-dev/dicom-squeeze/tree/main/docs/copilot-setup
+    about: How to configure Copilot CLI, MCP servers and instruction files for this repository.
+  - name: Security advisory
+    url: https://github.com/chapi-dev/dicom-squeeze/security/advisories/new
+    about: Report a vulnerability privately. Do not open a public issue.
+  - name: Discussions
+    url: https://github.com/chapi-dev/dicom-squeeze/discussions
+    about: Questions about DICOM compression planning, or anything that is not a defect.

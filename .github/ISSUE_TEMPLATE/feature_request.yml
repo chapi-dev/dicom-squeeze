@@ -1,0 +1,48 @@
+name: Feature request
+description: Suggest a capability for the planner.
+title: 'feat: '
+labels: ['enhancement', 'triage']
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem are you trying to solve?
+      description: Describe the planning question the tool cannot answer today.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would you like it to do?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which area would this touch?
+      multiple: true
+      options:
+        - Codecs and transfer syntaxes
+        - Modality profiles
+        - Storage tiers and pricing
+        - Estimation engine
+        - User interface
+        - Documentation
+        - CI, deployment or tooling
+    validations:
+      required: true
+
+  - type: textarea
+    id: sources
+    attributes:
+      label: Supporting sources
+      description: >
+        If the request introduces new figures, such as a compression ratio or a price,
+        link the primary source. Numbers in this repository must be traceable.
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you considered

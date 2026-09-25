@@ -1,0 +1,44 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-ink-950: #060b14;
+  --color-ink-900: #0b1220;
+  --color-ink-800: #131c2e;
+  --color-ink-700: #1d2942;
+  --color-ink-600: #2c3b5a;
+  --color-ink-400: #7d8ba8;
+  --color-ink-300: #a7b2c7;
+  --color-ink-100: #e6ebf4;
+
+  --color-signal-500: #22d3ee;
+  --color-signal-600: #0891b2;
+  --color-warn-500: #f59e0b;
+  --color-danger-500: #f43f5e;
+  --color-good-500: #34d399;
+
+  --font-sans:
+    'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, 'Cascadia Code', Consolas, 'Courier New', monospace;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  min-height: 100svh;
+  background:
+    radial-gradient(1200px 600px at 12% -10%, rgba(34, 211, 238, 0.14), transparent 60%),
+    radial-gradient(900px 500px at 92% 0%, rgba(244, 63, 94, 0.1), transparent 55%),
+    var(--color-ink-950);
+  color: var(--color-ink-100);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Keep native range inputs legible against the dark surface. */
+input[type='range'] {
+  accent-color: var(--color-signal-500);
+}

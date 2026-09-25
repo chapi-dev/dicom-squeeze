@@ -1,0 +1,12 @@
+# Normalise everything to LF in the repository and in the working tree, so Prettier's
+# endOfLine: lf setting behaves identically on Windows, macOS and Linux.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+
+# Collapse generated files in pull request diffs.
+package-lock.json linguist-generated=true -diff

@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "hooks": {
+    "sessionStart": [
+      {
+        "type": "command",
+        "bash": "node --version >/dev/null 2>&1 || echo 'Node is not on PATH. Install Node 24 before working in this repository.'",
+        "powershell": "if (-not (Get-Command node -ErrorAction SilentlyContinue)) { Write-Output 'Node is not on PATH. Install Node 24 before working in this repository.' }",
+        "timeoutSec": 10
+      }
+    ],
+    "preToolUse": [
+      {
+        "type": "command",
+        "bash": "./.github/hooks/guard-no-phi.sh",
+        "powershell": "./.github/hooks/guard-no-phi.ps1",
+        "timeoutSec": 10
+      }
+    ]
+  }
+}

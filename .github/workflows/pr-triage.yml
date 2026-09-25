@@ -1,0 +1,59 @@
+name: Pull request triage
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+
+jobs:
+  label:
+    name: Apply path labels
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/labeler@v6
+        with:
+          sync-labels: true
+
+  size:
+    name: Apply a size label
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/github-script@v8
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const number = context.payload.pull_request.number;
+            const pr = await github.rest.pulls.get({ owner, repo, pull_number: number });
+            const changed = pr.data.additions + pr.data.deletions;
+
+            const buckets = [
+              [10, 'size/xs'],
+              [50, 'size/s'],
+              [250, 'size/m'],
+              [800, 'size/l'],
+              [Infinity, 'size/xl'],
+            ];
+            const label = buckets.find(([limit]) => changed < limit)[1];
+            const all = buckets.map(([, name]) => name);
+
+            const current = pr.data.labels.map((l) => l.name);
+            for (const stale of current.filter((n) => all.includes(n) && n !== label)) {
+              await github.rest.issues.removeLabel({
+                owner, repo, issue_number: number, name: stale,
+              });
+            }
+            if (!current.includes(label)) {
+              await github.rest.issues.addLabels({
+                owner, repo, issue_number: number, labels: [label],
+              });
+            }

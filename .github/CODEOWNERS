@@ -1,0 +1,15 @@
+# Default owner for everything in the repository.
+*                       @chapi-dev
+
+# The estimation engine drives every number the UI shows, so changes here
+# always need a look from the code owner.
+/src/lib/               @chapi-dev
+
+# Supply chain and automation surfaces.
+/.github/workflows/     @chapi-dev
+/.github/dependabot.yml @chapi-dev
+
+# Agent configuration: changing this changes how every Copilot review behaves.
+/.github/copilot-instructions.md @chapi-dev
+/.github/instructions/  @chapi-dev
+/.github/agents/        @chapi-dev

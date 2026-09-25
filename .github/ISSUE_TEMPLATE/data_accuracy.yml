@@ -1,0 +1,48 @@
+name: Data accuracy report
+description: A compression ratio, study size or storage price looks wrong.
+title: 'data: '
+labels: ['data-accuracy', 'triage']
+body:
+  - type: markdown
+    attributes:
+      value: >
+        Every number in this repository should be traceable to a primary source.
+        If one is not, that is a defect worth fixing.
+
+  - type: dropdown
+    id: dataset
+    attributes:
+      label: Which dataset?
+      options:
+        - Transfer syntaxes and compression ratios (src/lib/codecs.ts)
+        - Modality study sizes (src/lib/modalities.ts)
+        - Storage tier prices (src/lib/storage.ts)
+        - Estimation formula (src/lib/estimate.ts)
+    validations:
+      required: true
+
+  - type: input
+    id: current
+    attributes:
+      label: Current value in the repository
+      placeholder: 'JPEG-LS Lossless: minRatio 2.0, maxRatio 3.0'
+    validations:
+      required: true
+
+  - type: input
+    id: proposed
+    attributes:
+      label: Proposed value
+      placeholder: 'minRatio 1.8, maxRatio 3.4'
+    validations:
+      required: true
+
+  - type: textarea
+    id: source
+    attributes:
+      label: Primary source
+      description: >
+        A vendor datasheet, a standards document, a published study, or an official
+        price list. Include the exact URL and the date you retrieved it.
+    validations:
+      required: true
