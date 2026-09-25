@@ -12,7 +12,7 @@ npm ci
 npm run dev
 ```
 
-Node 24 is the development target; `.nvmrc` pins it. CI also runs Node 22, so avoid
+Node 24 is the development target; `.nvmrc` pins it. CI also runs Node 22 and 26, so avoid
 anything that only works on the newest runtime.
 
 ## The four gates
@@ -113,6 +113,24 @@ the threshold.
 This app deliberately has no chart library, no state manager and no UI kit. Before adding a
 dependency, write the justification in one sentence. If it does not survive that, do not add
 it.
+
+### A warning about corporate npm mirrors
+
+A lockfile records *where* each tarball came from. If your npm is configured to use a company
+registry mirror, `npm install` rewrites every `resolved` URL to that mirror's hostname and
+stores its integrity hashes. Committing that to a public repository leaks internal
+infrastructure names and makes the lockfile unusable for anyone outside your network.
+
+Check before you commit a lockfile change:
+
+```bash
+npm config get registry   # expect https://registry.npmjs.org/
+```
+
+CI enforces this — the `quality` job fails if `package-lock.json` references anything other
+than `registry.npmjs.org`. If you are stuck behind a mirror, do not hand-edit the file: run
+the **Refresh lockfile** workflow from the Actions tab and it will regenerate the lockfile on
+a clean runner and open a pull request.
 
 ## Commits and pull requests
 
