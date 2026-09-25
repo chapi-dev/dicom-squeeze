@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Shared settings for the lab scripts.
 #
 # Every value can be overridden from the environment, so the same scripts work

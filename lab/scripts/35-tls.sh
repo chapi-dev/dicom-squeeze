@@ -1,9 +1,14 @@
 #!/usr/bin/env bash
 # Put real TLS in front of Orthanc.
 #
-# Until now the admin password crossed the public internet in a Base64 header
-# over plain HTTP -- PowerShell's Invoke-WebRequest actually refuses to send
-# credentials that way without an explicit override, which is a good instinct.
+# Orthanc's own HTTP listener on 8042 has no TLS. The first version of this lab
+# opened 8042 in the NSG to reach the UI, which meant the admin password crossed
+# the public internet Base64-encoded in a header -- PowerShell's
+# Invoke-WebRequest actually refuses to send credentials that way without an
+# explicit override, which is a good instinct, and is what prompted this script.
+# 01-provision.ps1 no longer opens 8042 at all: 443 is the only way in, and
+# 8042 stays bound to the VM for Caddy to reach over the loopback.
+#
 # Azure hands every public IP a *.cloudapp.azure.com name, which is a real
 # resolvable name, so Caddy can obtain a genuine Let's Encrypt certificate for
 # it automatically. No self-signed warnings, nothing to click through.

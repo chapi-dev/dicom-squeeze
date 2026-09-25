@@ -17,7 +17,7 @@ mountpoint -q "$DATA" || { echo "REFUSING: $DATA is not a mount point" >&2; exit
 echo "=== installing dcmtk (the reference DIMSE toolkit) ==="
 if ! command -v storescu >/dev/null 2>&1; then
   export DEBIAN_FRONTEND=noninteractive
-  for i in $(seq 1 60); do
+  for _ in $(seq 1 60); do
     fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 || break
     sleep 10
   done

@@ -25,7 +25,7 @@ echo "=== 1. C-FIND at STUDY level: what does this PACS hold? ==="
 # write each response out (-X) and dump them. Each response is itself a DICOM
 # object -- the query language of DIMSE is DICOM, not SQL and not JSON.
 RSP=/tmp/find-study
-rm -rf "$RSP"; mkdir -p "$RSP"; cd "$RSP"
+rm -rf "$RSP"; mkdir -p "$RSP"; cd "$RSP" || exit 1
 findscu -S -X -k "QueryRetrieveLevel=STUDY" \
         -k "PatientID=" -k "PatientName=" -k "StudyDate=" \
         -k "StudyInstanceUID=" -k "ModalitiesInStudy=" -k "NumberOfStudyRelatedInstances=" \
@@ -37,7 +37,7 @@ echo
 echo "=== 2. C-FIND filtered, the way a worklist query narrows down ==="
 echo "--- ask for PatientID=$PATIENT_ID at SERIES level ---"
 RSP2=/tmp/find-series
-rm -rf "$RSP2"; mkdir -p "$RSP2"; cd "$RSP2"
+rm -rf "$RSP2"; mkdir -p "$RSP2"; cd "$RSP2" || exit 1
 findscu -S -X -k "QueryRetrieveLevel=SERIES" -k "PatientID=$PATIENT_ID" \
         -k "StudyInstanceUID=" -k "SeriesInstanceUID=" -k "Modality=" \
         -k "SeriesDescription=" -k "NumberOfSeriesRelatedInstances=" \
@@ -47,7 +47,7 @@ for f in "$RSP2"/rsp*.dcm; do [ -e "$f" ] || continue; dcmdump "$f" | grep -vE '
 
 echo "--- ask for a patient that does not exist ---"
 RSP3=/tmp/find-none
-rm -rf "$RSP3"; mkdir -p "$RSP3"; cd "$RSP3"
+rm -rf "$RSP3"; mkdir -p "$RSP3"; cd "$RSP3" || exit 1
 findscu -S -X -k "QueryRetrieveLevel=STUDY" -k "PatientID=NO-SUCH-PATIENT" -k "StudyInstanceUID=" \
         -aet "$AET_LOCAL" -aec "$AET_REMOTE" "$HOST" "$PORT" >/dev/null 2>&1
 echo "responses: $(ls "$RSP3"/rsp*.dcm 2>/dev/null | wc -l) (association still succeeds, it just matches nothing)"

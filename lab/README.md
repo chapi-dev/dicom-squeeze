@@ -424,10 +424,13 @@ own; the image needs `STONE_WEB_VIEWER_PLUGIN_ENABLED=true`.
 pipefail`. `SIGPIPE` aborts the transfer half-way and the script reports
 success. This truncated the first C-STORE at 14 of 133 instances.
 
-**Credentials over plain HTTP.** Before `35-tls.sh`, the Orthanc password
-crossed the public internet Base64-encoded in a header. PowerShell's
+**Credentials over plain HTTP.** Orthanc's own listener on 8042 has no TLS. The
+first version of this lab opened 8042 in the NSG to reach the UI, so the admin
+password crossed the public internet Base64-encoded in a header. PowerShell's
 `Invoke-WebRequest` refuses to send credentials over an unencrypted connection
 without an explicit override, which is a good instinct to have inherited. Azure
 gives every public IP a resolvable `*.cloudapp.azure.com` name, so a real
 certificate is free and automatic — there is no reason to accept the warning.
-Port 8042 is closed to the internet once Caddy is up.
+`01-provision.ps1` as committed never opens 8042: the only inbound ports are
+4242 and 443 from your own address, plus 80 for the ACME challenge. Orthanc
+listens on 8042 inside the VM and Caddy reaches it over the loopback.

@@ -24,7 +24,10 @@ param(
   [string]$VmSize        = 'Standard_D2as_v6',
   [int]$DataDiskGb       = 128,
   [Parameter(Mandatory)][string]$DnsLabel,
-  [string]$WorkspaceName = 'wsdicomlabwe',
+  # Health Data Services workspace names are globally unique -- they become the
+  # DNS label <workspace>-<service>.dicom.azurehealthcareapis.com. Left empty,
+  # it is derived from -DnsLabel, which you already had to make unique.
+  [string]$WorkspaceName = '',
   [string]$DicomService  = 'dicomsvc',
   [string]$AdminUser     = 'azureuser',
   [string]$ShutdownTime  = '1900',
@@ -32,6 +35,21 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+
+if (-not $WorkspaceName) {
+  $WorkspaceName = ('ws' + ($DnsLabel -replace '[^a-zA-Z0-9]', '')).ToLower()
+  if ($WorkspaceName.Length -gt 24) { $WorkspaceName = $WorkspaceName.Substring(0, 24) }
+}
+
+# $ErrorActionPreference does not apply to native executables: az can fail and
+# the script sails on. Without this a failed vm create ran through fifteen more
+# calls against resources that were never created, and still printed a green
+# "done" with an empty FQDN.
+function Invoke-Az {
+  $out = az @args
+  if ($LASTEXITCODE -ne 0) { throw "az $($args -join ' ') failed with exit code $LASTEXITCODE" }
+  $out
+}
 
 function Step($msg) { Write-Host "`n=== $msg ===" -ForegroundColor Cyan }
 
@@ -42,16 +60,17 @@ $myIp = (Invoke-RestMethod 'https://api.ipify.org?format=json').ip
 Write-Host "  $myIp"
 
 Step 'resource group'
-az group create -n $ResourceGroup -l $Location --tags purpose=dicom-lab -o none
+Invoke-Az group create -n $ResourceGroup -l $Location --tags purpose=dicom-lab -o none
 
 Step 'ssh key'
 $keyPath = Join-Path $HOME '.ssh\dicom-lab'
 if (-not (Test-Path $keyPath)) {
   ssh-keygen -t ed25519 -f $keyPath -N '""' -C 'dicom-lab' | Out-Null
+  if ($LASTEXITCODE -ne 0) { throw "ssh-keygen failed with exit code $LASTEXITCODE" }
 }
 
 Step "virtual machine ($VmSize)"
-az vm create `
+Invoke-Az vm create `
   -g $ResourceGroup -n $VmName `
   --image 'Canonical:ubuntu-24_04-lts:server:latest' `
   --size $VmSize `
@@ -69,46 +88,46 @@ az vm create `
 Step 'network rules'
 # Nothing is open to the world except port 80, and that only because the ACME
 # HTTP-01 challenge is validated from addresses Let's Encrypt does not publish.
-az network nsg rule create -g $ResourceGroup --nsg-name "${VmName}NSG" -n allow-dimse `
+Invoke-Az network nsg rule create -g $ResourceGroup --nsg-name "${VmName}NSG" -n allow-dimse `
   --priority 120 --access Allow --protocol Tcp --direction Inbound `
   --source-address-prefixes "$myIp/32" --destination-port-ranges 4242 -o none
-az network nsg rule create -g $ResourceGroup --nsg-name "${VmName}NSG" -n allow-http-acme `
+Invoke-Az network nsg rule create -g $ResourceGroup --nsg-name "${VmName}NSG" -n allow-http-acme `
   --priority 340 --access Allow --protocol Tcp --direction Inbound `
   --source-address-prefixes Internet --destination-port-ranges 80 -o none
-az network nsg rule create -g $ResourceGroup --nsg-name "${VmName}NSG" -n allow-https `
+Invoke-Az network nsg rule create -g $ResourceGroup --nsg-name "${VmName}NSG" -n allow-https `
   --priority 350 --access Allow --protocol Tcp --direction Inbound `
   --source-address-prefixes "$myIp/32" --destination-port-ranges 443 -o none
 
 Step 'auto-shutdown'
-az vm auto-shutdown -g $ResourceGroup -n $VmName --time $ShutdownTime -o none
+Invoke-Az vm auto-shutdown -g $ResourceGroup -n $VmName --time $ShutdownTime -o none
 # The CLI writes the schedule in UTC regardless of the location, so correct it.
-$sub = az account show --query id -o tsv
-az resource update `
+$sub = Invoke-Az account show --query id -o tsv
+Invoke-Az resource update `
   --ids "/subscriptions/$sub/resourceGroups/$ResourceGroup/providers/microsoft.devtestlab/schedules/shutdown-computevm-$VmName" `
   --set "properties.timeZoneId=$ShutdownTz" -o none
 
 Step 'health data services workspace'
-az healthcareapis workspace create -g $ResourceGroup -n $WorkspaceName -l $Location -o none
+Invoke-Az healthcareapis workspace create -g $ResourceGroup -n $WorkspaceName -l $Location -o none
 
 Step 'dicom service'
 # Microsoft's own regional availability page still lists only Canada Central,
 # East US and East US 2 at the time of writing. West Europe works. Trust ARM.
-az healthcareapis workspace dicom-service create `
+Invoke-Az healthcareapis workspace dicom-service create `
   -g $ResourceGroup --workspace-name $WorkspaceName -n $DicomService -l $Location -o none
 
 Step 'rbac'
 $scope = "/subscriptions/$sub/resourceGroups/$ResourceGroup/providers/Microsoft.HealthcareApis/workspaces/$WorkspaceName/dicomservices/$DicomService"
-$vmMi  = az vm identity show -g $ResourceGroup -n $VmName --query principalId -o tsv
-$me    = az ad signed-in-user show --query id -o tsv
+$vmMi  = Invoke-Az vm identity show -g $ResourceGroup -n $VmName --query principalId -o tsv
+$me    = Invoke-Az ad signed-in-user show --query id -o tsv
 # There are exactly two data-plane roles: DICOM Data Owner and DICOM Data Reader.
-az role assignment create --assignee-object-id $vmMi --assignee-principal-type ServicePrincipal `
+Invoke-Az role assignment create --assignee-object-id $vmMi --assignee-principal-type ServicePrincipal `
   --role 'DICOM Data Owner' --scope $scope -o none
-az role assignment create --assignee-object-id $me --assignee-principal-type User `
+Invoke-Az role assignment create --assignee-object-id $me --assignee-principal-type User `
   --role 'DICOM Data Owner' --scope $scope -o none
 
 Step 'done'
-$fqdn = az network public-ip show -g $ResourceGroup -n "${VmName}PublicIP" --query dnsSettings.fqdn -o tsv
-$svc  = az healthcareapis workspace dicom-service show -g $ResourceGroup --workspace-name $WorkspaceName -n $DicomService --query serviceUrl -o tsv
+$fqdn = Invoke-Az network public-ip show -g $ResourceGroup -n "${VmName}PublicIP" --query dnsSettings.fqdn -o tsv
+$svc  = Invoke-Az healthcareapis workspace dicom-service show -g $ResourceGroup --workspace-name $WorkspaceName -n $DicomService --query serviceUrl -o tsv
 # The lab scripts read these two. Exporting them here means the names chosen by
 # the parameters above are the ones the scripts use, with nothing to copy by hand.
 $env:LAB_FQDN     = $fqdn
@@ -123,7 +142,7 @@ Write-Host @"
     .\Copy-LabToVm.ps1
     .\Invoke-VmScript.ps1 -Script (Get-Content ..\scripts\20-setup-disk.sh -Raw)
 
-  If `az vm create` failed with SkuNotAvailable, the real message is hidden
+  If ``az vm create`` failed with SkuNotAvailable, the real message is hidden
   behind an az CLI bug ("The content for this response was already consumed").
   Recover it with:
     az vm create ... --debug *> debug.log ; Select-String 'Code:' debug.log

@@ -73,9 +73,11 @@ for i in range(0, len(files), 20):
     status, doc = stow(batch)
     ok = len(doc.get("00081199", {}).get("Value", []))
     failed = doc.get("00081198", {}).get("Value", [])
-    # 0272 is "the object already exists"; anything else is a genuine refusal.
+    # 45070 is the only "already stored" code. Verified by re-sending an
+    # instance: HTTP 409 with FailureReason (0008,1197) = 45070. 272 decimal is
+    # a *general* failure, so counting it here would hide a real refusal.
     already = sum(1 for f in failed
-                  if f.get("00081197", {}).get("Value", [None])[0] in (0x0272, 45070))
+                  if f.get("00081197", {}).get("Value", [None])[0] == 45070)
     sent += ok
     dupe += already
     note = "" if status == 200 else f"  <- {len(failed)} refused, {already} already present"
@@ -106,7 +108,7 @@ curl -fsS -H "Authorization: Bearer $TOKEN" \
      -o /tmp/azure-wado.bin -D /tmp/azure-wado.hdr \
      "$SVC/studies/$STUDY/series/$SER"
 grep -i '^content-type' /tmp/azure-wado.hdr
-echo "  whole series pulled over HTTPS: $(numfmt --to=iec $(stat -c%s /tmp/azure-wado.bin))"
+echo "  whole series pulled over HTTPS: $(numfmt --to=iec "$(stat -c%s /tmp/azure-wado.bin)")"
 
 echo
 echo "=== 5. the point of the whole lab: DIMSE against Azure ==="
@@ -127,7 +129,7 @@ echo
 echo "=== 6. what the service charges for is storage, and it is not tiered ==="
 curl -fsS -H "Authorization: Bearer $TOKEN" -H 'Accept: application/dicom+json' \
      "$SVC/studies/$STUDY/series/$SER/metadata" -o /tmp/azmeta.json
-echo "  series metadata over the wire: $(numfmt --to=iec $(stat -c%s /tmp/azmeta.json))"
+echo "  series metadata over the wire: $(numfmt --to=iec "$(stat -c%s /tmp/azmeta.json)")"
 echo
 echo "  Blob storage under the DICOM service is charged at a single rate."
 echo "  There is no Cool or Archive tier to demote a five-year-old study to,"

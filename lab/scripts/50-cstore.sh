@@ -59,7 +59,7 @@ for s in json.load(sys.stdin):
     print("series  :", t.get("SeriesInstanceUID"))
     print("          modality:", t.get("Modality"), "| instances:", len(s["Instances"]), "| thickness:", t.get("SliceThickness"))
 '
-echo "instances:" $(curl -fsS -u "$AUTH" ${ORTHANC_HTTP}/instances | python3 -c 'import json,sys;print(len(json.load(sys.stdin)))')
+echo "instances: $(curl -fsS -u "$AUTH" ${ORTHANC_HTTP}/instances | python3 -c 'import json,sys;print(len(json.load(sys.stdin)))')"
 
 echo
 echo "=== proof the pixels live on the managed disk ==="
