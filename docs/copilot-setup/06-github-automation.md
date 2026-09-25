@@ -7,7 +7,7 @@ Copilot rather than doing it locally.
 
 | Workflow                    | Trigger                        | What it does                                                |
 | --------------------------- | ------------------------------ | ----------------------------------------------------------- |
-| `ci.yml`                    | push to `main`, pull request   | Format check, oxlint, typecheck, tests on Node 20/22/24, build |
+| `ci.yml`                    | push to `main`, pull request   | Format check, oxlint, typecheck, tests on Node 22/24, build |
 | `codeql.yml`                | push, pull request, weekly     | CodeQL for TypeScript and for Actions workflows             |
 | `deploy-pages.yml`          | push to `main`                 | Builds with the correct base path and deploys to Pages      |
 | `dependency-review.yml`     | pull request                   | Blocks high-severity or disallowed-licence dependencies     |
