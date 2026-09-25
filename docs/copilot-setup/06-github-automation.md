@@ -78,19 +78,71 @@ az webapp create -g <rg> -p <plan> -n <app> --runtime "NODE:24-lts"
 az webapp config set -g <rg> -n <app> --startup-file "node server.mjs" --always-on true
 
 az ad app create --display-name gh-<app>-deploy
-az ad app federated-credential create --id <appId> --parameters '{
-  "name": "gh-env",
-  "issuer": "https://token.actions.githubusercontent.com",
-  "subject": "repo:<owner>/<repo>:environment:production",
-  "audiences": ["api://AzureADTokenExchange"]
-}'
 az role assignment create --assignee <appId> --role "Website Contributor" \
   --scope /subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.Web/sites/<app>
 ```
 
-The subject string has to match how the job runs. A job with `environment: production` gets
-`repo:<owner>/<repo>:environment:production`; one without gets
-`repo:<owner>/<repo>:ref:refs/heads/main`. A mismatch fails at login with `AADSTS70021`.
+Then the federated credential — and this is the part worth reading carefully.
+
+#### Getting the subject right
+
+The subject has to match the `sub` claim the runner actually presents, and that claim is not
+always the `repo:<owner>/<repo>:...` form the documentation examples use. Ask the repository
+what it will send:
+
+```bash
+gh api repos/<owner>/<repo>/actions/oidc/customization/sub
+```
+
+```json
+{
+  "use_default": true,
+  "use_immutable_subject": true,
+  "sub_claim_prefix": "repo:chapi-dev@253938553/dicom-squeeze@1387553843"
+}
+```
+
+With `use_immutable_subject` on, the prefix carries the numeric owner and repository IDs.
+Those survive a rename and cannot be reused by someone who registers the freed-up name later,
+which is the point of the feature — but it does mean a credential written against the plain
+name never matches:
+
+```bash
+az ad app federated-credential create --id <appId> --parameters '{
+  "name": "gh-env",
+  "issuer": "https://token.actions.githubusercontent.com",
+  "subject": "repo:<owner>@<ownerId>/<repo>@<repoId>:environment:production",
+  "audiences": ["api://AzureADTokenExchange"]
+}'
+```
+
+The suffix depends on how the job runs, not on what you would like it to be. A job declaring
+`environment: production` sends `:environment:production`; one without sends
+`:ref:refs/heads/main`. Getting either part wrong fails at login with **`AADSTS700213: No
+matching federated identity record found for presented assertion subject`** — and helpfully,
+the error quotes the exact subject that was presented, so the fix is usually to copy that
+string into the credential verbatim.
+
+If you add the ID-qualified credentials, delete any name-based ones you created first. They
+can never match while immutable subjects are enabled, and leaving them behind re-opens the
+name-reuse gap they exist to close.
+
+### Why the deploy does not track Kudu's readiness
+
+`az webapp deploy` defaults `--track-status` to `true`, which polls Kudu for the site's runtime
+state after the package has landed. On the first deploy here that poll sat on
+`Starting the site...` for eight minutes while the app was already answering `/healthz`, and
+ran the job into its timeout. The workflow disables it. The deployment itself stays
+synchronous, so a rejected package still fails the step; what is dropped is only a readiness
+signal that had already proven unreliable.
+
+What replaces it is a check against the running site, which is a stronger claim anyway: the
+workflow compares the asset filenames the site serves against the ones this run built. Vite
+fingerprints them by content, so a mismatch means the deployment did not take — something a
+plain `200` from `/` cannot tell you.
+
+Also budget generously. Kudu's cold warm-up on a Basic plan took 3m42s before the upload even
+began.
 
 ## Copilot code review
 
