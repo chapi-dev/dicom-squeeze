@@ -107,6 +107,25 @@ If you think one is wrong, that is a defect worth reporting — open a
 [data accuracy issue](https://github.com/chapi-dev/dicom-squeeze/issues/new?template=data_accuracy.yml)
 with the primary source.
 
+## The lab
+
+The estimator models an archive. [`lab/`](lab/README.md) builds a real one: a CT
+scan from The Cancer Imaging Archive, served by Orthanc on an Azure VM with the
+pixel data on its own managed disk, reachable both over DIMSE the way a vendor
+PACS reads it and over DICOMweb the way the cloud expects you to.
+
+The same study is then pushed to the managed Azure DICOM service, which turns
+out to be a useful reality check on this estimator:
+
+- **The Azure DICOM service does not speak DIMSE**, so nothing already in the
+  hospital can talk to it without a gateway you build and run.
+- **It will not transcode to JPEG-LS or HTJ2K** — the two syntaxes that matter
+  for lossless archival compression both return `406`. Compress before you
+  store, or not at all.
+- **Storage is one flat tier at €0.02/GB/month**, with no Cool or Archive to
+  demote old studies into. That is €754,975 a year for 3 PB, and why a 2.6:1
+  lossless ratio is worth €464,600 a year rather than a rounding error.
+
 ## Using Copilot with this repository
 
 The repository ships its agent configuration as committed files: repository and path-scoped
